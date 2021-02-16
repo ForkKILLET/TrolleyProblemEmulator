@@ -12,7 +12,9 @@ module.exports = {
     "rules": {
 		"no-fallthrough": 0,
 		"no-debugger": 0,
-		"no-case-declarations": 0
+		"no-case-declarations": 0,
+		"max-len": [ 1, { "code": 75 } ],
+		"no-unused-vars": 1
     }
 }
 
