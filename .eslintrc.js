@@ -13,7 +13,7 @@ module.exports = {
 		"no-fallthrough": 0,
 		"no-debugger": 0,
 		"no-case-declarations": 0,
-		"max-len": [ 1, { "code": 75 } ],
+		"max-len": [ 1, { "code": 90 } ],
 		"no-unused-vars": 1
     }
 }
