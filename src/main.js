@@ -13,9 +13,9 @@ const button = Object.assign([], {
 		if (button.focus > i) button.focus --
 	},
 	kill_all: () => {
+		ui.clear_prompt()
 		button.length = 0
 		button.focus = null
-		ui.clear_prompt()
 	}
 })
 
@@ -54,8 +54,8 @@ const ui = {
 		}
 	},
 	clear(L, c, x = 0, y = 0, m = ui.size, n = ui.size) {
-		if (c !== "--") ui.ctx[L].fillStyle = color[c ?? " "]
-		ui.ctx[L][ c === "--" ? "clearRect" : "fillRect" ](
+		if (c) ui.ctx[L].fillStyle = color[c ?? " "]
+		ui.ctx[L][ c ? "fillRect" : "clearRect" ](
 			x * psize, y * psize, m * psize, n * psize
 		)
 	},
@@ -67,50 +67,61 @@ const ui = {
 	clear_prompt(b) {
 		if (button.focus === null) return
 		let { x, y } = b ?? button[button.focus]
-		ui.clear("ui", "--", x, y, 11, 5)
+		ui.clear("ui", null, x, y, 11, 5)
 	}
 }
 
 const test = {
 	font() {
-		ui.clear("stage")
-		ui.text("stage", 1, 1,
+		ui.clear("ui")
+		ui.text("ui", 1, 1,
 			Object.keys(font).join("").replace(/[^]{17}/g, "$&\n")
 		)
 	},
 	color() {
+		ui.clear("ui")
 		ui.clear("stage", "%")
 		let i = 0
 		for (let c of Object.keys(color))
-			ui.text("stage", 1 + (i ++) * 6, 1, c, c, " ")
+			ui.text("ui", 1 + (i ++) * 6, 1, c, c, " ")
 	}
 }
 
 const stage = {
 	title() {
-		ui.text("stage", 1, 1, "TRAIN PROBLEM", "#")
-		ui.text("stage", 1, 7, "<<<< EMULATOR", "!")
+		ui.text("ui", 1, 1, "TRAIN PROBLEM", "#")
+		ui.text("ui", 1, 7, "<<<< EMULATOR", "!")
 	},
 	author() {
-		ui.text("stage", 1, 19, "@", "@")
-		ui.text("stage", 7, 19, "FORKΨKILLET", "#")
-		ui.text("stage", 13, 25, "GITHUB:FORKFG/TPE", "@").reg_name("github", () =>
+		ui.text("ui", 1, 19, "@", "@")
+		ui.text("ui", 7, 19, "FORKΨKILLET", "#")
+		ui.text("ui", 13, 25, "GITHUB:FORKFG/TPE", "@").reg_name("github", () =>
 			open("https://github.com/ForkFG/TrainProblemEmulator")
 		)
 	},
 	menu() {
-		ui.text("stage", 13, 37, "[ START ]", "+").reg_name("start", stage.start)
-		ui.text("stage", 13, 43, "[ TEST:FONT ]", "+").reg_name("test:font", () => {
+		ui.text("ui", 13, 37, "[ START ]", "+").reg_name("start", stage.start)
+		ui.text("ui", 13, 43, "[ TEST:FONT ]", "+").reg_name("test:font", () => {
 			test.font()
 			button.kill("github")
 			button.kill("help")
 			stage.menu()
 		})
-		ui.text("stage", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", () => {
+		ui.text("ui", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", () => {
 			test.color()
 			button.kill("github")
 			button.kill("help")
 			stage.menu()
+		})
+		ui.text("ui", 13, 55, "[ FUN:TPGOD ]", "=").reg_name("fun:tpgod", () => {
+			ui.clear("ui")
+			button.kill_all()
+			tpgod.appear(10, 10).move(0, 0, 0, 0)
+			setTimeout(() => tpgod.move(
+				eval("t => " + prompt("dx = t => ...")),
+				eval("t => " + prompt("dy = t => ...")),
+				+ prompt("ms"), + prompt("t")
+			), 1000)
 		})
 		ui.prompt()
 	},
@@ -133,39 +144,51 @@ const stage = {
 	},
 	light(c) {
 		[ 1, 2, 3 ].forEach(i =>
-			ui.draw("stage", 100, 48 + i * 9, image.light.replaceAll(" ",
+			ui.draw("stage", 100, 48 + i * 9, image.light.replaceAll("L",
 				{ "!": 1, "?": 2, "*": 3 }[c] === i ? c : "%"
 			)
 		))
 		ui.draw("stage", 100, 48 + 4 * 9, image.light_pole)
 	},
 	help() {
-		ui.text("stage", 100, 1, "?", "?").reg_name("help", () => {
-			ui.text("stage", 100, 1, "N/A", "#", " ")
+		ui.text("ui", 100, 1, "?", "?").reg_name("help", () => {
+			ui.text("ui", 100, 1, "N/A", "#", " ")
 		})
 	},
 	start() {
 		ui.clear("stage")
+		ui.clear("ui")
 		button.kill_all()
 		stage.title()
 		stage.railway()
 		stage.light("*")
 
-		god.move(0, 60, 1, 0, 200, 20)
+		tpgod.appear(0, 60).move(1, 0, 200, 20)
 	}
 }
 
-const god = {
+const tpgod = {
 	move_state: 1,
-	move(x, y, dx, dy, ms, t) {
-		ui.draw("move", x, y, image.god_head.trim() + image.god_body
-			+ image[ "god_tentacle_" + god.move_state ].trim()
+	appear(x, y) {
+		tpgod.x = x; tpgod.y = y
+		return tpgod
+	},
+	move(dx, dy, ms, t) {
+		const { x, y } = tpgod,
+			fx = typeof dx === "function" ? dx(t) : dx,
+			fy = typeof dy === "function" ? dy(t) : dy
+
+		ui.draw("move", tpgod.x, tpgod.y,
+			image.tpgod_head.trim() + image.tpgod_body +
+			image[ "tpgod_tentacle_" + tpgod.move_state ].trim()
 		)
 		t && setTimeout(() => {
-			ui.clear("move", " ", x - dx, y - dy, 16, 22)
-			god.move_state = 3 - god.move_state
-			god.move(x + dx, y + dy, dx, dy, ms, t - 1)
+			ui.clear("move", " ", x - fx, y - fy, 16, 22)
+			tpgod.move_state = 3 - tpgod.move_state
+			tpgod.x += fx; tpgod.y += fy
+			tpgod.move(dx, dy, ms, t - 1)
 		}, ms)
+		return tpgod
 	}
 }
 
@@ -175,15 +198,13 @@ class player {
 
 if (location.protocol === "file:") window.debug = {
 	ui, test, stage,
+	tpgod,
 	psize, color, font, image
 }
 
 window.onload = stage.init
 
 window.onkeyup = e => {
-	const l = button.length
-	if (! l) return
-
 	let d; switch (e.key) {
 	case "Enter":
 	case " ":
@@ -197,10 +218,14 @@ window.onkeyup = e => {
 	case "ArrowUp":
 		d = -1
 		break
+	case "r":
+		location.reload()
 	default:
 		return
 	}
 
+	const l = button.length
+	if (! l) return
 	if (button.focus === null)
 		if (d) button.focus = 0
 		else return

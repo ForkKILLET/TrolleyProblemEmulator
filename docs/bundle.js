@@ -24,9 +24,9 @@ var button = Object.assign([], {
     if (button.focus > i) button.focus--;
   },
   kill_all: function kill_all() {
+    ui.clear_prompt();
     button.length = 0;
     button.focus = null;
-    ui.clear_prompt();
   }
 });
 var ui = {
@@ -87,8 +87,8 @@ var ui = {
     var y = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
     var m = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : ui.size;
     var n = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : ui.size;
-    if (c !== "--") ui.ctx[L].fillStyle = _color[c !== null && c !== void 0 ? c : " "];
-    ui.ctx[L][c === "--" ? "clearRect" : "fillRect"](x * psize, y * psize, m * psize, n * psize);
+    if (c) ui.ctx[L].fillStyle = _color[c !== null && c !== void 0 ? c : " "];
+    ui.ctx[L][c ? "fillRect" : "clearRect"](x * psize, y * psize, m * psize, n * psize);
   },
   prompt: function prompt() {
     if (button.focus === null) return;
@@ -102,49 +102,58 @@ var ui = {
         x = _ref.x,
         y = _ref.y;
 
-    ui.clear("ui", "--", x, y, 11, 5);
+    ui.clear("ui", null, x, y, 11, 5);
   }
 };
 var test = {
   font: function font() {
-    ui.clear("stage");
-    ui.text("stage", 1, 1, Object.keys(_font).join("").replace(/[^]{17}/g, "$&\n"));
+    ui.clear("ui");
+    ui.text("ui", 1, 1, Object.keys(_font).join("").replace(/[^]{17}/g, "$&\n"));
   },
   color: function color() {
+    ui.clear("ui");
     ui.clear("stage", "%");
     var i = 0;
 
     for (var _i = 0, _Object$keys = Object.keys(_color); _i < _Object$keys.length; _i++) {
       var c = _Object$keys[_i];
-      ui.text("stage", 1 + i++ * 6, 1, c, c, " ");
+      ui.text("ui", 1 + i++ * 6, 1, c, c, " ");
     }
   }
 };
 var stage = {
   title: function title() {
-    ui.text("stage", 1, 1, "TRAIN PROBLEM", "#");
-    ui.text("stage", 1, 7, "<<<< EMULATOR", "!");
+    ui.text("ui", 1, 1, "TRAIN PROBLEM", "#");
+    ui.text("ui", 1, 7, "<<<< EMULATOR", "!");
   },
   author: function author() {
-    ui.text("stage", 1, 19, "@", "@");
-    ui.text("stage", 7, 19, "FORKΨKILLET", "#");
-    ui.text("stage", 13, 25, "GITHUB:FORKFG/TPE", "@").reg_name("github", function () {
+    ui.text("ui", 1, 19, "@", "@");
+    ui.text("ui", 7, 19, "FORKΨKILLET", "#");
+    ui.text("ui", 13, 25, "GITHUB:FORKFG/TPE", "@").reg_name("github", function () {
       return open("https://github.com/ForkFG/TrainProblemEmulator");
     });
   },
   menu: function menu() {
-    ui.text("stage", 13, 37, "[ START ]", "+").reg_name("start", stage.start);
-    ui.text("stage", 13, 43, "[ TEST:FONT ]", "+").reg_name("test:font", function () {
+    ui.text("ui", 13, 37, "[ START ]", "+").reg_name("start", stage.start);
+    ui.text("ui", 13, 43, "[ TEST:FONT ]", "+").reg_name("test:font", function () {
       test.font();
       button.kill("github");
       button.kill("help");
       stage.menu();
     });
-    ui.text("stage", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", function () {
+    ui.text("ui", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", function () {
       test.color();
       button.kill("github");
       button.kill("help");
       stage.menu();
+    });
+    ui.text("ui", 13, 55, "[ FUN:TPGOD ]", "=").reg_name("fun:tpgod", function () {
+      ui.clear("ui");
+      button.kill_all();
+      tpgod.appear(10, 10).move(0, 0, 0, 0);
+      setTimeout(function () {
+        return tpgod.move(eval("t => " + prompt("dx = t => ...")), eval("t => " + prompt("dy = t => ...")), +prompt("ms"), +prompt("t"));
+      }, 1000);
     });
     ui.prompt();
   },
@@ -166,7 +175,7 @@ var stage = {
   },
   light: function light(c) {
     [1, 2, 3].forEach(function (i) {
-      return ui.draw("stage", 100, 48 + i * 9, image.light.replaceAll(" ", {
+      return ui.draw("stage", 100, 48 + i * 9, image.light.replaceAll("L", {
         "!": 1,
         "?": 2,
         "*": 3
@@ -175,28 +184,41 @@ var stage = {
     ui.draw("stage", 100, 48 + 4 * 9, image.light_pole);
   },
   help: function help() {
-    ui.text("stage", 100, 1, "?", "?").reg_name("help", function () {
-      ui.text("stage", 100, 1, "N/A", "#", " ");
+    ui.text("ui", 100, 1, "?", "?").reg_name("help", function () {
+      ui.text("ui", 100, 1, "N/A", "#", " ");
     });
   },
   start: function start() {
     ui.clear("stage");
+    ui.clear("ui");
     button.kill_all();
     stage.title();
     stage.railway();
     stage.light("*");
-    god.move(0, 60, 1, 0, 200, 20);
+    tpgod.appear(0, 60).move(1, 0, 200, 20);
   }
 };
-var god = {
+var tpgod = {
   move_state: 1,
-  move: function move(x, y, dx, dy, ms, t) {
-    ui.draw("move", x, y, image.god_head.trim() + image.god_body + image["god_tentacle_" + god.move_state].trim());
+  appear: function appear(x, y) {
+    tpgod.x = x;
+    tpgod.y = y;
+    return tpgod;
+  },
+  move: function move(dx, dy, ms, t) {
+    var x = tpgod.x,
+        y = tpgod.y,
+        fx = typeof dx === "function" ? dx(t) : dx,
+        fy = typeof dy === "function" ? dy(t) : dy;
+    ui.draw("move", tpgod.x, tpgod.y, image.tpgod_head.trim() + image.tpgod_body + image["tpgod_tentacle_" + tpgod.move_state].trim());
     t && setTimeout(function () {
-      ui.clear("move", " ", x - dx, y - dy, 16, 22);
-      god.move_state = 3 - god.move_state;
-      god.move(x + dx, y + dy, dx, dy, ms, t - 1);
+      ui.clear("move", " ", x - fx, y - fy, 16, 22);
+      tpgod.move_state = 3 - tpgod.move_state;
+      tpgod.x += fx;
+      tpgod.y += fy;
+      tpgod.move(dx, dy, ms, t - 1);
     }, ms);
+    return tpgod;
   }
 };
 
@@ -208,6 +230,7 @@ if (location.protocol === "file:") window.debug = {
   ui: ui,
   test: test,
   stage: stage,
+  tpgod: tpgod,
   psize: psize,
   color: _color,
   font: _font,
@@ -216,8 +239,6 @@ if (location.protocol === "file:") window.debug = {
 window.onload = stage.init;
 
 window.onkeyup = function (e) {
-  var l = button.length;
-  if (!l) return;
   var d;
 
   switch (e.key) {
@@ -236,10 +257,15 @@ window.onkeyup = function (e) {
       d = -1;
       break;
 
+    case "r":
+      location.reload();
+
     default:
       return;
   }
 
+  var l = button.length;
+  if (!l) return;
   if (button.focus === null) {
     if (d) button.focus = 0;else return;
   } else {
@@ -257,6 +283,7 @@ const color = {
 
 "#": "black",
 "!": "red",
+".": "ivory",
 "?": "yellow",
 "@": "cornflowerblue",
 "+": "forestgreen",
@@ -861,10 +888,10 @@ light: `
 ##########
 #////////#
 #//####//#
-#/#    #/#
-#/#    #/#
-#/#    #/#
-#/#    #/#
+#/#LLLL#/#
+#/#LLLL#/#
+#/#LLLL#/#
+#/#LLLL#/#
 #//####//#
 #////////#
 `,
@@ -878,7 +905,7 @@ light_pole: `
 ----##----
 `,
 
-god_head: `
+tpgod_head: `
 -----######-----
 ---##########---
 --###!####!###--
@@ -888,7 +915,7 @@ god_head: `
 ################
 `,
 
-god_body: `
+tpgod_body: `
 ####/#/##/#/####
 -###///##///###-
 --###//##//###--
@@ -902,18 +929,60 @@ god_body: `
 -----######-----
 `,
 
-god_tentacle_1: `
+tpgod_tentacle_1: `
 -----#-##!---/#--
 ----//-/  !!#--/#
 /--#-#--#--/!----
 -#/---/#-/#--!!!-
 `,
 
-god_tentacle_2: `
+tpgod_tentacle_2: `
 -----#-##!---/--#
 ----/-//  !!#-#/-
 -#-#--#-#--/!-!--
 /-/---/#-/#--!-!-
+`,
+
+player_head_citizen: `
+----########----
+---##########---
+---##########---
+---##S##S##S#---
+--SSSSSSSSSSSS--
+--SSSESSSSESSS--
+---SSESSSSESS---
+---SSESSSSESS---
+---SSSSSSSSSS---
+----SSSSSSSS----
+----SSSMMSSS----
+-----SSSSSS-----
+`,
+
+player_head_citizen_overlook: `
+%%%===
+%%===%
+%===%%
+===%%%
+`,
+
+player_body: `
+-----######-----
+----#-#CC#-#----
+----#-#CC#-#----
+----#-#CC#-#----
+----#-#CC#-#----
+----#-#CC#-#----
+----#-#CC#-#----
+----#-#CC#-#----
+----#-####-#----
+------#--#------
+------#--#------
+------#--#------
+------#--#------
+------#--#------
+------#--#------
+------#--#------
+------#--#------
 `
 
 }
