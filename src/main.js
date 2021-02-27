@@ -1,41 +1,85 @@
 const {
 	psize, color, font, image
-} = require("./resource")
+}			= require("./resource")
 
-const csize = 600 / psize
+const csize = 750 / psize
 const layers = [ "stage", "move", "ui" ]
 
-const button = Object.assign([], {
-	focus: null,
-	find: n => button.findIndex(b => b.n === n),
-	kill: n => {
-		const i = button.find(n)
-		if (i === -1) return
-		button.splice(i, 1)
-		if (button.focus === i) ui.clear_prompt()
-		if (button.focus > i) button.focus --
+const route = {
+	_stack: [],
+
+	get top() { return route._stack[ route._stack.length - 1 ] },
+	get now() { return route.top[route.top.focus] },
+	push: (n, b) => {											// Param: `n`ame, `b`ack.
+		if (n && route.top?.name === n) return
+		const frame = Object.assign([], {
+			_focus: null,
+			name: n,
+			back: b
+		})
+		Object.defineProperty(frame, "focus", {
+			get: () => frame._focus,
+			set: v => {
+				route.clear_prompt()
+				frame._focus = v
+				if (v !== null) route.prompt()
+			}
+		})
+		route._stack.push(frame)
 	},
-	kill_all: () => {
-		ui.clear_prompt()
-		button.length = 0
-		button.focus = null
+	pop: () => {
+		route.clear_prompt()
+		route.clear_timeout()
+		const f = route.top.back
+		route._stack.pop()
+		f?.()
+		route.prompt()
+	},
+
+	find: n => route.top.findIndex(b => b.n === n),				// Param: `n`ame.
+	add: o => { route.top.push(o) },							// Param: `o`bject.
+	rmv: n => {													// Param: `n`ame.
+		const i = route.top.find(n), f = route.top.focus
+		if (i === -1) return
+		route.top.splice(i, 1)
+		if (f === i) ui.clear_prompt()
+		if (f > i) route.top.focus --
+	},
+	rmv_all: () => {
+		route.top.focus = null
+		route.top.length = 0
+	},
+
+	prompt() {
+		if (route.top.focus === null) return
+		const { x, y } = route.now
+		ui.text("ui", x, y, ">>", "+")
+	},
+	clear_prompt(b) {											// Param: `b`utton.
+		if (route.top.focus === null) return
+		let { x, y } = b ?? route.now
+		ui.clear("ui", null, x, y, 11, 5)
+	},
+
+	_timeout: [],
+	timeout(f, ms) {											// Param: `f`unction, `m`illi`s`econd.
+		route._timeout.push(setTimeout(f, ms))
+	},
+	clear_timeout() {
+		route._timeout.forEach(id => clearTimeout(id))
 	}
-})
+}
 
 const help = {
 	init: `
-[ J / DOWN ]
-  FOCUS NEXT
-[ K / UP ]
-  FOCUS PREVIOUS
-[ ? ]
-  FOCUS ?
-[ SPACE / ENTER ]
-  ACTIVE
-[ R ]
-  REFRESH
-[ C ] !
-  CLEAR ALL
+J / DOWN      FOCUS NEXT
+K / UP        FOCUS PREV
+H / LEFT /    BACK
+DEL / BKSP
+?             FOCUS ?
+SP / ENTER    ACTIVE
+R             REFRESH
+~C            CLEAR ALL
 `
 }
 
@@ -44,7 +88,7 @@ const ui = {
 		acc[L] = document.getElementById(L).getContext("2d")
 		return acc
 	}, {}),
-	draw(L, x, y, p) {
+	draw(L, x, y, p) {											// Param: `L`ayer, `x`, `y`, `p`ixels.
 		if (typeof p === "string") p = p.split("\n")
 		p = p.filter((s, k) => (k !== 0 && k !== p.length - 1) || s !== "")
 		for (let r = 0; r < p.length; r++)
@@ -53,7 +97,7 @@ const ui = {
 			ui.ctx[L].fillRect((x + c) * psize, (y + r) * psize, psize, psize)
 		}
 	},
-	text(L, x, y, t, fc = "#", bc = "-", gx = 6, gy = 6) {
+	text(L, x, y, t, fc = "#", bc = "-", gx = 6, gy = 6) {		// Param: `L`ayer, `x`, `y`, `f`ore`g`round color, `b`ack`g`round color, `g`ap `x`, `g`ap `y`
 		if (typeof t === "string") t = t.split("\n")
 		for (let r = 0; r < t.length; r++)
 		for (let c = 0; c < t[r].length; c++) {
@@ -64,47 +108,38 @@ const ui = {
 			ui.draw(L, x + c * gx, y + r * gy, f)
 		}
 		return {
-			reg: f => button.push({ f, x: x - 12, y }),
-			reg_name: (n, f) => {
-				if (button.find(n) === -1)
-					button.push({ n, f, x: x - 12, y })
+			reg: f => route.add({ f, x: x - 12, y }),			// Param: `f`unction.
+			reg_name: (n, f, p) => {							// Param: `n`ame, `f`unction, `p`ush.
+				if (route.find(n) === -1)
+					route.add({ n, x: x - 12, y, f:
+						p ? () => { f(); route.push(n, p) } : f
+					})
 			}
 		}
 	},
-	clear(L, c, x = 0, y = 0, m = csize, n = csize) {
-		if (c) ui.ctx[L].fillStyle = color[c ?? " "]
+	clear(L, c, x = 0, y = 0, m = csize, n = csize) {			// Param: `L`ayer, `c`olor, `x`, `y`, `m`, `n`.
+		if (c) ui.ctx[L].fillStyle = color[c]
 		ui.ctx[L][ c ? "fillRect" : "clearRect" ](
 			x * psize, y * psize, m * psize, n * psize
 		)
 	},
 	clear_all() {
 		layers.map(L => ui.clear(L))
-	},
-	prompt() {
-		if (button.focus === null) return
-		const b = button[button.focus]
-		ui.text("ui", b.x, b.y, ">>", "+")
-	},
-	clear_prompt(b) {
-		if (button.focus === null) return
-		let { x, y } = b ?? button[button.focus]
-		ui.clear("ui", null, x, y, 11, 5)
 	}
 }
 
 const test = {
 	font() {
-		ui.clear("ui")
-		ui.text("ui", 1, 1,
+		ui.clear("ui", null, 0, 80)
+		ui.text("ui", 1, 80,
 			Object.keys(font).join("").replace(/[^]{17}/g, "$&\n")
 		)
 	},
 	color() {
-		ui.clear("ui")
-		ui.clear("stage", "%")
+		ui.clear("ui", null, 0, 80)
 		let i = 0
 		for (let c of Object.keys(color))
-			ui.text("ui", 1 + (i ++) * 6, 1, c, c, " ")
+			ui.text("ui", 1 + (i ++) * 6, 80, c, c, " ")
 	}
 }
 
@@ -121,32 +156,22 @@ const stage = {
 		)
 	},
 	menu() {
-		ui.text("ui", 13, 37, "[ START ]", "+").reg_name("start", stage.start)
-		ui.text("ui", 13, 43, "[ TEST:FONT ]", "+").reg_name("test:font", () => {
-			test.font()
-			button.kill("github")
-			button.kill("help")
-			stage.menu()
-		})
-		ui.text("ui", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", () => {
-			test.color()
-			button.kill("github")
-			button.kill("help")
-			stage.menu()
-		})
+		ui.text("ui", 13, 37, "[ START ]", "+").reg_name("start", stage.start, stage.init)
+		ui.text("ui", 13, 43, "[ TEST:FONT ]", "+").reg_name("test:font", test.font)
+		ui.text("ui", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", test.color)
 		ui.text("ui", 13, 55, "[ FUN:TPGOD ]", "=").reg_name("fun:tpgod", () => {
 			ui.clear("ui")
-			button.kill_all()
 			tpgod.appear(10, 10).move(0, 0, 0, 0)
 			setTimeout(() => tpgod.move(
 				eval("t => " + prompt("dx = t => ...")),
 				eval("t => " + prompt("dy = t => ...")),
 				+ prompt("ms"), + prompt("t")
 			), 1000)
-		})
-		ui.prompt()
+		}, true)
 	},
 	init() {
+		route.push("init")
+		ui.clear_all()
 		stage.title()
 		stage.menu()
 		stage.author()
@@ -171,15 +196,14 @@ const stage = {
 		))
 	},
 	help() {
-		ui.text("ui", 100, 1, "?", "?").reg_name("help", () => {
-			ui.clear("ui")
-			ui.text("ui", 1, 1, help.init, "#")
+		ui.text("ui", 140, 1, "?", "?").reg_name("help", () => {
+			ui.clear("ui", null, 0, 80)
+			ui.text("ui", 1, 80, help.init.trim(), "#")
 		})
 	},
 	start() {
 		ui.clear("stage")
 		ui.clear("ui")
-		button.kill_all()
 		stage.title()
 		stage.railway()
 		stage.light("*")
@@ -190,11 +214,11 @@ const stage = {
 
 const tpgod = {
 	move_state: 1,
-	appear(x, y) {
+	appear(x, y) {												// Param: `x`, `y`.
 		tpgod.x = x; tpgod.y = y
 		return tpgod
 	},
-	move(dx, dy, ms, t) {
+	move(dx, dy, ms, t) {										// Param: `dx`, `dy`, `m`illi`s`econd, `t`imes.
 		const { x, y } = tpgod,
 			fx = typeof dx === "function" ? dx(t) : dx,
 			fy = typeof dy === "function" ? dy(t) : dy
@@ -202,7 +226,7 @@ const tpgod = {
 		ui.draw("move", tpgod.x, tpgod.y, image.cat(
 			"tpgod_head", "tpgod_body", "tpgod_tentacle_" + tpgod.move_state
 		))
-		if (t) setTimeout(() => {
+		if (t) route.timeout(() => {
 			ui.clear("move", " ", x - fx, y - fy, 16, 22)
 			tpgod.move_state = 3 - tpgod.move_state
 			tpgod.x += fx; tpgod.y += fy
@@ -216,7 +240,7 @@ class player {
 	constructor(look) {
 		this.look = { ...look }
 	}
-	place(r, i) {
+	place(r, i) {												// Param: `r`ailway, `i`ndex.
 		ui.draw("move", 15 * i, r ? 85 : 25, image.cat_ex(
 			"player_head_citizen_overlook", "player_body_overlook"
 		)(
@@ -227,7 +251,7 @@ class player {
 }
 
 if (location.protocol === "file:") window.debug = {
-	button,
+	route,
 	ui, test, stage,
 	tpgod, player,
 	csize, layers,
@@ -240,7 +264,7 @@ window.onkeyup = e => {
 	let d; switch (e.key) {
 	case "Enter":
 	case " ":
-		button[button.focus].f()
+		route.now.f()
 		return
 	case "j":
 	case "ArrowDown":
@@ -251,30 +275,30 @@ window.onkeyup = e => {
 		d = -1
 		break
 	case "?":
-		button.focus = button.find("help")
-		break
-	case "R":
+		route.top.focus = route.find("help")
+		return
 	case "r":
 		location.reload()
 		return
 	case "C":
 		ui.clear_all()
 		return
+	case "Delete":
+	case "Backspace":
+	case "h":
+	case "ArrowLeft":
+		route.pop()
+		return
 	default:
 		return
 	}
 
-	const l = button.length
+	const l = route.top.length
+	let f = route.top.focus
 	if (! l) return
-	if (button.focus === null)
-		if (d) button.focus = 0
-		else return
-	else {
-		ui.clear_prompt()
-		if (d) button.focus += d
-	}
-	if (button.focus === -1) button.focus = l - 1
-	if (button.focus === l) button.focus = 0
-	ui.prompt()
+	if (d) f = f === null ? 0 : f + d
+	if (f === -1) f = l - 1
+	if (f === l) f = 0
+	route.top.focus = f
 }
 

@@ -6,13 +6,13 @@
   "author": "ForkKILLET",
   "license": "MIT",
   "devDependencies": {
-    "eslint": "^7.20.0",
-    "gulp": "^4.0.2",
-    "gulp-browserify": "^0.5.1",
-    "gulp-rename": "^2.0.0",
     "@babel/core": "^7.12.1z6",
     "@babel/preset-env": "^7.12.16",
-    "gulp-babel": "^8.0.0"
+    "eslint": "^7.20.0",
+    "gulp": "^4.0.2",
+    "gulp-babel": "^8.0.0",
+    "gulp-browserify": "^0.5.1",
+    "gulp-rename": "^2.0.0"
   },
   "dependencies": {}
 }

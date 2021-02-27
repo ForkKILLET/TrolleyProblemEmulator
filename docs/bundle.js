@@ -31,30 +31,105 @@ var _require = require("./resource"),
     _font = _require.font,
     image = _require.image;
 
-var csize = 600 / psize;
+var csize = 750 / psize;
 var layers = ["stage", "move", "ui"];
-var button = Object.assign([], {
-  focus: null,
+var route = {
+  _stack: [],
+
+  get top() {
+    return route._stack[route._stack.length - 1];
+  },
+
+  get now() {
+    return route.top[route.top.focus];
+  },
+
+  push: function push(n, b) {
+    var _route$top;
+
+    // Param: `n`ame, `b`ack.
+    if (n && ((_route$top = route.top) === null || _route$top === void 0 ? void 0 : _route$top.name) === n) return;
+    var frame = Object.assign([], {
+      _focus: null,
+      name: n,
+      back: b
+    });
+    Object.defineProperty(frame, "focus", {
+      get: function get() {
+        return frame._focus;
+      },
+      set: function set(v) {
+        route.clear_prompt();
+        frame._focus = v;
+        if (v !== null) route.prompt();
+      }
+    });
+
+    route._stack.push(frame);
+  },
+  pop: function pop() {
+    route.clear_prompt();
+    route.clear_timeout();
+    var f = route.top.back;
+
+    route._stack.pop();
+
+    f === null || f === void 0 ? void 0 : f();
+    route.prompt();
+  },
   find: function find(n) {
-    return button.findIndex(function (b) {
+    return route.top.findIndex(function (b) {
       return b.n === n;
     });
   },
-  kill: function kill(n) {
-    var i = button.find(n);
-    if (i === -1) return;
-    button.splice(i, 1);
-    if (button.focus === i) ui.clear_prompt();
-    if (button.focus > i) button.focus--;
+  // Param: `n`ame.
+  add: function add(o) {
+    route.top.push(o);
   },
-  kill_all: function kill_all() {
-    ui.clear_prompt();
-    button.length = 0;
-    button.focus = null;
+  // Param: `o`bject.
+  rmv: function rmv(n) {
+    // Param: `n`ame.
+    var i = route.top.find(n),
+        f = route.top.focus;
+    if (i === -1) return;
+    route.top.splice(i, 1);
+    if (f === i) ui.clear_prompt();
+    if (f > i) route.top.focus--;
+  },
+  rmv_all: function rmv_all() {
+    route.top.focus = null;
+    route.top.length = 0;
+  },
+  prompt: function prompt() {
+    if (route.top.focus === null) return;
+    var _route$now = route.now,
+        x = _route$now.x,
+        y = _route$now.y;
+    ui.text("ui", x, y, ">>", "+");
+  },
+  clear_prompt: function clear_prompt(b) {
+    // Param: `b`utton.
+    if (route.top.focus === null) return;
+
+    var _ref = b !== null && b !== void 0 ? b : route.now,
+        x = _ref.x,
+        y = _ref.y;
+
+    ui.clear("ui", null, x, y, 11, 5);
+  },
+  _timeout: [],
+  timeout: function timeout(f, ms) {
+    // Param: `f`unction, `m`illi`s`econd.
+    route._timeout.push(setTimeout(f, ms));
+  },
+  clear_timeout: function clear_timeout() {
+    route._timeout.forEach(function (id) {
+      return clearTimeout(id);
+    });
   }
-});
+};
 var _help = {
-  init: "\n[ J / DOWN ]\n  FOCUS NEXT\n[ K / UP ]\n  FOCUS PREVIOUS\n[ ? ]\n  FOCUS ?\n[ SPACE / ENTER ]\n  ACTIVE\n[ R ]\n  REFRESH\n[ C ] !\n  CLEAR ALL\n"
+  init: "\nJ / DOWN      FOCUS NEXT\nK / UP        FOCUS PREV\nH / LEFT /    BACK\nDEL / BKSP\n?             FOCUS ?\nSP / ENTER    ACTIVE\nR             REFRESH\n~C            CLEAR ALL\n"
 };
 var ui = {
   ctx: layers.reduce(function (acc, L) {
@@ -62,6 +137,7 @@ var ui = {
     return acc;
   }, {}),
   draw: function draw(L, x, y, p) {
+    // Param: `L`ayer, `x`, `y`, `p`ixels.
     if (typeof p === "string") p = p.split("\n");
     p = p.filter(function (s, k) {
       return k !== 0 && k !== p.length - 1 || s !== "";
@@ -79,6 +155,7 @@ var ui = {
     var bc = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : "-";
     var gx = arguments.length > 6 && arguments[6] !== undefined ? arguments[6] : 6;
     var gy = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 6;
+    // Param: `L`ayer, `x`, `y`, `f`ore`g`round color, `b`ack`g`round color, `g`ap `x`, `g`ap `y`
     if (typeof t === "string") t = t.split("\n");
 
     for (var r = 0; r < t.length; r++) {
@@ -91,18 +168,23 @@ var ui = {
 
     return {
       reg: function reg(f) {
-        return button.push({
+        return route.add({
           f: f,
           x: x - 12,
           y: y
         });
       },
-      reg_name: function reg_name(n, f) {
-        if (button.find(n) === -1) button.push({
+      // Param: `f`unction.
+      reg_name: function reg_name(n, f, p) {
+        // Param: `n`ame, `f`unction, `p`ush.
+        if (route.find(n) === -1) route.add({
           n: n,
-          f: f,
           x: x - 12,
-          y: y
+          y: y,
+          f: p ? function () {
+            f();
+            route.push(n, p);
+          } : f
         });
       }
     };
@@ -112,42 +194,28 @@ var ui = {
     var y = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
     var m = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : csize;
     var n = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : csize;
-    if (c) ui.ctx[L].fillStyle = _color[c !== null && c !== void 0 ? c : " "];
+    // Param: `L`ayer, `c`olor, `x`, `y`, `m`, `n`.
+    if (c) ui.ctx[L].fillStyle = _color[c];
     ui.ctx[L][c ? "fillRect" : "clearRect"](x * psize, y * psize, m * psize, n * psize);
   },
   clear_all: function clear_all() {
     layers.map(function (L) {
       return ui.clear(L);
     });
-  },
-  prompt: function prompt() {
-    if (button.focus === null) return;
-    var b = button[button.focus];
-    ui.text("ui", b.x, b.y, ">>", "+");
-  },
-  clear_prompt: function clear_prompt(b) {
-    if (button.focus === null) return;
-
-    var _ref = b !== null && b !== void 0 ? b : button[button.focus],
-        x = _ref.x,
-        y = _ref.y;
-
-    ui.clear("ui", null, x, y, 11, 5);
   }
 };
 var test = {
   font: function font() {
-    ui.clear("ui");
-    ui.text("ui", 1, 1, Object.keys(_font).join("").replace(/[^]{17}/g, "$&\n"));
+    ui.clear("ui", null, 0, 80);
+    ui.text("ui", 1, 80, Object.keys(_font).join("").replace(/[^]{17}/g, "$&\n"));
   },
   color: function color() {
-    ui.clear("ui");
-    ui.clear("stage", "%");
+    ui.clear("ui", null, 0, 80);
     var i = 0;
 
     for (var _i = 0, _Object$keys = Object.keys(_color); _i < _Object$keys.length; _i++) {
       var c = _Object$keys[_i];
-      ui.text("ui", 1 + i++ * 6, 1, c, c, " ");
+      ui.text("ui", 1 + i++ * 6, 80, c, c, " ");
     }
   }
 };
@@ -164,30 +232,20 @@ var stage = {
     });
   },
   menu: function menu() {
-    ui.text("ui", 13, 37, "[ START ]", "+").reg_name("start", stage.start);
-    ui.text("ui", 13, 43, "[ TEST:FONT ]", "+").reg_name("test:font", function () {
-      test.font();
-      button.kill("github");
-      button.kill("help");
-      stage.menu();
-    });
-    ui.text("ui", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", function () {
-      test.color();
-      button.kill("github");
-      button.kill("help");
-      stage.menu();
-    });
+    ui.text("ui", 13, 37, "[ START ]", "+").reg_name("start", stage.start, stage.init);
+    ui.text("ui", 13, 43, "[ TEST:FONT ]", "+").reg_name("test:font", test.font);
+    ui.text("ui", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", test.color);
     ui.text("ui", 13, 55, "[ FUN:TPGOD ]", "=").reg_name("fun:tpgod", function () {
       ui.clear("ui");
-      button.kill_all();
       tpgod.appear(10, 10).move(0, 0, 0, 0);
       setTimeout(function () {
         return tpgod.move(eval("t => " + prompt("dx = t => ...")), eval("t => " + prompt("dy = t => ...")), +prompt("ms"), +prompt("t"));
       }, 1000);
-    });
-    ui.prompt();
+    }, true);
   },
   init: function init() {
+    route.push("init");
+    ui.clear_all();
     stage.title();
     stage.menu();
     stage.author();
@@ -217,15 +275,14 @@ var stage = {
     }))));
   },
   help: function help() {
-    ui.text("ui", 100, 1, "?", "?").reg_name("help", function () {
-      ui.clear("ui");
-      ui.text("ui", 1, 1, _help.init, "#");
+    ui.text("ui", 140, 1, "?", "?").reg_name("help", function () {
+      ui.clear("ui", null, 0, 80);
+      ui.text("ui", 1, 80, _help.init.trim(), "#");
     });
   },
   start: function start() {
     ui.clear("stage");
     ui.clear("ui");
-    button.kill_all();
     stage.title();
     stage.railway();
     stage.light("*");
@@ -235,17 +292,19 @@ var stage = {
 var tpgod = {
   move_state: 1,
   appear: function appear(x, y) {
+    // Param: `x`, `y`.
     tpgod.x = x;
     tpgod.y = y;
     return tpgod;
   },
   move: function move(dx, dy, ms, t) {
+    // Param: `dx`, `dy`, `m`illi`s`econd, `t`imes.
     var x = tpgod.x,
         y = tpgod.y,
         fx = typeof dx === "function" ? dx(t) : dx,
         fy = typeof dy === "function" ? dy(t) : dy;
     ui.draw("move", tpgod.x, tpgod.y, image.cat("tpgod_head", "tpgod_body", "tpgod_tentacle_" + tpgod.move_state));
-    if (t) setTimeout(function () {
+    if (t) route.timeout(function () {
       ui.clear("move", " ", x - fx, y - fy, 16, 22);
       tpgod.move_state = 3 - tpgod.move_state;
       tpgod.x += fx;
@@ -266,6 +325,7 @@ var player = /*#__PURE__*/function () {
   _createClass(player, [{
     key: "place",
     value: function place(r, i) {
+      // Param: `r`ailway, `i`ndex.
       ui.draw("move", 15 * i, r ? 85 : 25, image.cat_ex("player_head_citizen_overlook", "player_body_overlook")({
         _: 10,
         S: this.look.skin,
@@ -281,7 +341,7 @@ var player = /*#__PURE__*/function () {
 }();
 
 if (location.protocol === "file:") window.debug = {
-  button: button,
+  route: route,
   ui: ui,
   test: test,
   stage: stage,
@@ -302,7 +362,7 @@ window.onkeyup = function (e) {
   switch (e.key) {
     case "Enter":
     case " ":
-      button[button.focus].f();
+      route.now.f();
       return;
 
     case "j":
@@ -316,10 +376,9 @@ window.onkeyup = function (e) {
       break;
 
     case "?":
-      button.focus = button.find("help");
-      break;
+      route.top.focus = route.find("help");
+      return;
 
-    case "R":
     case "r":
       location.reload();
       return;
@@ -328,21 +387,24 @@ window.onkeyup = function (e) {
       ui.clear_all();
       return;
 
+    case "Delete":
+    case "Backspace":
+    case "h":
+    case "ArrowLeft":
+      route.pop();
+      return;
+
     default:
       return;
   }
 
-  var l = button.length;
+  var l = route.top.length;
+  var f = route.top.focus;
   if (!l) return;
-  if (button.focus === null) {
-    if (d) button.focus = 0;else return;
-  } else {
-    ui.clear_prompt();
-    if (d) button.focus += d;
-  }
-  if (button.focus === -1) button.focus = l - 1;
-  if (button.focus === l) button.focus = 0;
-  ui.prompt();
+  if (d) f = f === null ? 0 : f + d;
+  if (f === -1) f = l - 1;
+  if (f === l) f = 0;
+  route.top.focus = f;
 };
 },{"./resource":2}],2:[function(require,module,exports){
 const psize	= 5
