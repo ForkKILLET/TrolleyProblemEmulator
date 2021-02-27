@@ -2,6 +2,9 @@ const {
 	psize, color, font, image
 } = require("./resource")
 
+const csize = 600 / psize
+const layers = [ "stage", "move", "ui" ]
+
 const button = Object.assign([], {
 	focus: null,
 	find: n => button.findIndex(b => b.n === n),
@@ -19,10 +22,25 @@ const button = Object.assign([], {
 	}
 })
 
+const help = {
+	init: `
+[ J / DOWN ]
+  FOCUS NEXT
+[ K / UP ]
+  FOCUS PREVIOUS
+[ ? ]
+  FOCUS ?
+[ SPACE / ENTER ]
+  ACTIVE
+[ R ]
+  REFRESH
+[ C ] !
+  CLEAR ALL
+`
+}
+
 const ui = {
-	board: " ",
-	size: 600 / psize,
-	ctx: [ "stage", "move", "ui" ].reduce((acc, L) => {
+	ctx: layers.reduce((acc, L) => {
 		acc[L] = document.getElementById(L).getContext("2d")
 		return acc
 	}, {}),
@@ -53,11 +71,14 @@ const ui = {
 			}
 		}
 	},
-	clear(L, c, x = 0, y = 0, m = ui.size, n = ui.size) {
+	clear(L, c, x = 0, y = 0, m = csize, n = csize) {
 		if (c) ui.ctx[L].fillStyle = color[c ?? " "]
 		ui.ctx[L][ c ? "fillRect" : "clearRect" ](
 			x * psize, y * psize, m * psize, n * psize
 		)
+	},
+	clear_all() {
+		layers.map(L => ui.clear(L))
 	},
 	prompt() {
 		if (button.focus === null) return
@@ -134,7 +155,7 @@ const stage = {
 	railway() {
 		[ 30, 34, 90, 94 ].forEach(y => {
 			let d = y % 10
-			for (let x = d ? -4 : 0; x < ui.size; x += 6) {
+			for (let x = d ? -4 : 0; x < csize; x += 6) {
 				ui.draw("stage", x, y, image.random("railway", 4))
 				ui.draw("stage", x, y + (d ? 4 : -1), image[
 					"railway_" + (d ? "bottom" : "top")
@@ -143,16 +164,16 @@ const stage = {
 		})
 	},
 	light(c) {
-		[ 1, 2, 3 ].forEach(i =>
-			ui.draw("stage", 100, 48 + i * 9, image.light.replaceAll("L",
-				{ "!": 1, "?": 2, "*": 3 }[c] === i ? c : "%"
-			)
+		ui.draw("stage", 100, 58, image.cat_ex(
+			...Array.from({ length: 3 }, () => "light"), "light_pole"
+		)(
+			...Array.from({ length: 3 }, (_, k) => ({ L: "!?*"[k] === c ? c : "%" }))
 		))
-		ui.draw("stage", 100, 48 + 4 * 9, image.light_pole)
 	},
 	help() {
 		ui.text("ui", 100, 1, "?", "?").reg_name("help", () => {
-			ui.text("ui", 100, 1, "N/A", "#", " ")
+			ui.clear("ui")
+			ui.text("ui", 1, 1, help.init, "#")
 		})
 	},
 	start() {
@@ -178,11 +199,10 @@ const tpgod = {
 			fx = typeof dx === "function" ? dx(t) : dx,
 			fy = typeof dy === "function" ? dy(t) : dy
 
-		ui.draw("move", tpgod.x, tpgod.y,
-			image.tpgod_head.trim() + image.tpgod_body +
-			image[ "tpgod_tentacle_" + tpgod.move_state ].trim()
-		)
-		t && setTimeout(() => {
+		ui.draw("move", tpgod.x, tpgod.y, image.cat(
+			"tpgod_head", "tpgod_body", "tpgod_tentacle_" + tpgod.move_state
+		))
+		if (t) setTimeout(() => {
 			ui.clear("move", " ", x - fx, y - fy, 16, 22)
 			tpgod.move_state = 3 - tpgod.move_state
 			tpgod.x += fx; tpgod.y += fy
@@ -193,12 +213,24 @@ const tpgod = {
 }
 
 class player {
-	
+	constructor(look) {
+		this.look = { ...look }
+	}
+	place(r, i) {
+		ui.draw("move", 15 * i, r ? 85 : 25, image.cat_ex(
+			"player_head_citizen_overlook", "player_body_overlook"
+		)(
+			{ _: 10, S: this.look.skin, E: this.look.eyes, M: this.look.mouth },
+			{ C: this.look.cloth })
+		)
+	}
 }
 
 if (location.protocol === "file:") window.debug = {
+	button,
 	ui, test, stage,
-	tpgod,
+	tpgod, player,
+	csize, layers,
 	psize, color, font, image
 }
 
@@ -218,8 +250,16 @@ window.onkeyup = e => {
 	case "ArrowUp":
 		d = -1
 		break
+	case "?":
+		button.focus = button.find("help")
+		break
+	case "R":
 	case "r":
 		location.reload()
+		return
+	case "C":
+		ui.clear_all()
+		return
 	default:
 		return
 	}
@@ -231,7 +271,7 @@ window.onkeyup = e => {
 		else return
 	else {
 		ui.clear_prompt()
-		button.focus += d
+		if (d) button.focus += d
 	}
 	if (button.focus === -1) button.focus = l - 1
 	if (button.focus === l) button.focus = 0

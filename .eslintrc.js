@@ -14,7 +14,8 @@ module.exports = {
 		"no-debugger": 0,
 		"no-case-declarations": 0,
 		"max-len": [ 1, { "code": 90 } ],
-		"no-unused-vars": 1
+		"no-unused-vars": 1,
+		"no-sparse-arrays": 0
     }
 }
 

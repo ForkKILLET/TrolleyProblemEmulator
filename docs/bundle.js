@@ -1,7 +1,29 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
 var _require = require("./resource"),
     psize = _require.psize,
@@ -9,6 +31,8 @@ var _require = require("./resource"),
     _font = _require.font,
     image = _require.image;
 
+var csize = 600 / psize;
+var layers = ["stage", "move", "ui"];
 var button = Object.assign([], {
   focus: null,
   find: function find(n) {
@@ -29,10 +53,11 @@ var button = Object.assign([], {
     button.focus = null;
   }
 });
+var _help = {
+  init: "\n[ J / DOWN ]\n  FOCUS NEXT\n[ K / UP ]\n  FOCUS PREVIOUS\n[ ? ]\n  FOCUS ?\n[ SPACE / ENTER ]\n  ACTIVE\n[ R ]\n  REFRESH\n[ C ] !\n  CLEAR ALL\n"
+};
 var ui = {
-  board: " ",
-  size: 600 / psize,
-  ctx: ["stage", "move", "ui"].reduce(function (acc, L) {
+  ctx: layers.reduce(function (acc, L) {
     acc[L] = document.getElementById(L).getContext("2d");
     return acc;
   }, {}),
@@ -85,10 +110,15 @@ var ui = {
   clear: function clear(L, c) {
     var x = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
     var y = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
-    var m = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : ui.size;
-    var n = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : ui.size;
+    var m = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : csize;
+    var n = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : csize;
     if (c) ui.ctx[L].fillStyle = _color[c !== null && c !== void 0 ? c : " "];
     ui.ctx[L][c ? "fillRect" : "clearRect"](x * psize, y * psize, m * psize, n * psize);
+  },
+  clear_all: function clear_all() {
+    layers.map(function (L) {
+      return ui.clear(L);
+    });
   },
   prompt: function prompt() {
     if (button.focus === null) return;
@@ -167,25 +197,29 @@ var stage = {
     [30, 34, 90, 94].forEach(function (y) {
       var d = y % 10;
 
-      for (var x = d ? -4 : 0; x < ui.size; x += 6) {
+      for (var x = d ? -4 : 0; x < csize; x += 6) {
         ui.draw("stage", x, y, image.random("railway", 4));
         ui.draw("stage", x, y + (d ? 4 : -1), image["railway_" + (d ? "bottom" : "top")]);
       }
     });
   },
   light: function light(c) {
-    [1, 2, 3].forEach(function (i) {
-      return ui.draw("stage", 100, 48 + i * 9, image.light.replaceAll("L", {
-        "!": 1,
-        "?": 2,
-        "*": 3
-      }[c] === i ? c : "%"));
-    });
-    ui.draw("stage", 100, 48 + 4 * 9, image.light_pole);
+    ui.draw("stage", 100, 58, image.cat_ex.apply(image, _toConsumableArray(Array.from({
+      length: 3
+    }, function () {
+      return "light";
+    })).concat(["light_pole"])).apply(void 0, _toConsumableArray(Array.from({
+      length: 3
+    }, function (_, k) {
+      return {
+        L: "!?*"[k] === c ? c : "%"
+      };
+    }))));
   },
   help: function help() {
     ui.text("ui", 100, 1, "?", "?").reg_name("help", function () {
-      ui.text("ui", 100, 1, "N/A", "#", " ");
+      ui.clear("ui");
+      ui.text("ui", 1, 1, _help.init, "#");
     });
   },
   start: function start() {
@@ -210,8 +244,8 @@ var tpgod = {
         y = tpgod.y,
         fx = typeof dx === "function" ? dx(t) : dx,
         fy = typeof dy === "function" ? dy(t) : dy;
-    ui.draw("move", tpgod.x, tpgod.y, image.tpgod_head.trim() + image.tpgod_body + image["tpgod_tentacle_" + tpgod.move_state].trim());
-    t && setTimeout(function () {
+    ui.draw("move", tpgod.x, tpgod.y, image.cat("tpgod_head", "tpgod_body", "tpgod_tentacle_" + tpgod.move_state));
+    if (t) setTimeout(function () {
       ui.clear("move", " ", x - fx, y - fy, 16, 22);
       tpgod.move_state = 3 - tpgod.move_state;
       tpgod.x += fx;
@@ -222,15 +256,39 @@ var tpgod = {
   }
 };
 
-var player = function player() {
-  _classCallCheck(this, player);
-};
+var player = /*#__PURE__*/function () {
+  function player(look) {
+    _classCallCheck(this, player);
+
+    this.look = _objectSpread({}, look);
+  }
+
+  _createClass(player, [{
+    key: "place",
+    value: function place(r, i) {
+      ui.draw("move", 15 * i, r ? 85 : 25, image.cat_ex("player_head_citizen_overlook", "player_body_overlook")({
+        _: 10,
+        S: this.look.skin,
+        E: this.look.eyes,
+        M: this.look.mouth
+      }, {
+        C: this.look.cloth
+      }));
+    }
+  }]);
+
+  return player;
+}();
 
 if (location.protocol === "file:") window.debug = {
+  button: button,
   ui: ui,
   test: test,
   stage: stage,
   tpgod: tpgod,
+  player: player,
+  csize: csize,
+  layers: layers,
   psize: psize,
   color: _color,
   font: _font,
@@ -257,8 +315,18 @@ window.onkeyup = function (e) {
       d = -1;
       break;
 
+    case "?":
+      button.focus = button.find("help");
+      break;
+
+    case "R":
     case "r":
       location.reload();
+      return;
+
+    case "C":
+      ui.clear_all();
+      return;
 
     default:
       return;
@@ -270,7 +338,7 @@ window.onkeyup = function (e) {
     if (d) button.focus = 0;else return;
   } else {
     ui.clear_prompt();
-    button.focus += d;
+    if (d) button.focus += d;
   }
   if (button.focus === -1) button.focus = l - 1;
   if (button.focus === l) button.focus = 0;
@@ -943,6 +1011,38 @@ tpgod_tentacle_2: `
 /-/---/#-/#--!-!-
 `,
 
+ground_tentacle_1: `
+----------------------
+------------/--/------
+------/-----------/---
+---/---------------/--
+--/---------------/---
+----/---------/-------
+--------/-------------
+`,
+
+ground_tentacle_2: `
+------------#--#------
+------#-----/--/--#---
+---#--/-----------/#--
+--#/--------------#/--
+--/-#---------#---/---
+----/---#-----/-------
+--------/-------------
+`,
+
+ground_tentacle_3: `
+------------#--#------
+------##----/##/-##---
+---#--/-#--##---#-/#--
+--#/-#-----#-#--###/--
+--/-#----##---#---/---
+----/---#-----/-------
+--------/-------------
+`,
+
+
+
 player_head_citizen: `
 ----########----
 ---##########---
@@ -959,10 +1059,14 @@ player_head_citizen: `
 `,
 
 player_head_citizen_overlook: `
-%%%===
-%%===%
-%===%%
-===%%%
+-------#####-
+-----########
+----SSSSSSSS-
+--SSSESSESSS-
+--SSSSSSSS---
+-SSSSSSSS----
+SSSMMSSS-----
+SSSSSS-------
 `,
 
 player_body: `
@@ -983,12 +1087,39 @@ player_body: `
 ------#--#------
 ------#--#------
 ------#--#------
-`
+`,
+
+player_body_overlook: `
+---------##CCC#-
+-------#-#CCC#-#
+------#-#CCC#-#-
+-----#-#CCC#-#--
+----#-#CCC#-#---
+---#-#CCC#-#----
+----#####-------
+----#--#--------
+---#--#---------
+--#--#----------
+-#--#-----------
+#--#------------
+`,
+
+random: (n, m) =>
+	image[ n + "_" + (~~ (Math.random() * 100) % m + 1) ],
+
+cat: (...ps) => (Array.isArray(ps[0]) ? ps[0] : ps)
+	.map(p => (image[p] ?? p).trim()).join("\n"),
+cat_ex: (...ps) => (...ex) => ps.map((p, i) => {
+	let s = (image[p] ?? p).trim()
+	const e = ex[i] ?? {}
+	if (e._) // Note: offset
+		s = s.replace(/^/mg, "-".repeat(e._))
+	for (let [ f, t ] of Object.entries(e))
+		if (f !== "_") s = s.replaceAll(f, t)
+	return s
+}).join("\n"),
 
 }
-
-image.random = (n, m) =>
-	image[ n + "_" + (~~ (Math.random() * 100) % m + 1) ]
 
 module.exports = {
 	psize, color, font, image
