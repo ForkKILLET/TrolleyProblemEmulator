@@ -105,7 +105,7 @@ var route = {
     var _route$now = route.now,
         x = _route$now.x,
         y = _route$now.y;
-    ui.text("ui", x, y, ">>", "+");
+    ui.text("ui", x - 12, y, ">>", "+");
   },
   clear_prompt: function clear_prompt(b) {
     // Param: `b`utton.
@@ -115,12 +115,16 @@ var route = {
         x = _ref.x,
         y = _ref.y;
 
-    ui.clear("ui", null, x, y, 11, 5);
+    ui.clear("ui", null, x - 12, y, 11, 5);
   },
   _timeout: [],
   timeout: function timeout(f, ms) {
     // Param: `f`unction, `m`illi`s`econd.
     route._timeout.push(setTimeout(f, ms));
+  },
+  interval: function interval(f, ms) {
+    // Param: `f`unction, `m`illi`s`econd.
+    route._timeout.push(setInterval(f, ms));
   },
   clear_timeout: function clear_timeout() {
     route._timeout.forEach(function (id) {
@@ -169,18 +173,21 @@ var ui = {
     return {
       reg: function reg(f) {
         return route.add({
-          f: f,
-          x: x - 12,
-          y: y
+          // Param: `f`unction.
+          x: x,
+          y: y,
+          m: t[0].length * 6,
+          n: t.length * 6,
+          f: f
         });
       },
-      // Param: `f`unction.
       reg_name: function reg_name(n, f, p) {
         // Param: `n`ame, `f`unction, `p`ush.
         if (route.find(n) === -1) route.add({
-          n: n,
-          x: x - 12,
+          x: x,
           y: y,
+          m: t[0].length * 6,
+          n: t.length * 6,
           f: p ? function () {
             f();
             route.push(n, p);
@@ -197,6 +204,10 @@ var ui = {
     // Param: `L`ayer, `c`olor, `x`, `y`, `m`, `n`.
     if (c) ui.ctx[L].fillStyle = _color[c];
     ui.ctx[L][c ? "fillRect" : "clearRect"](x * psize, y * psize, m * psize, n * psize);
+  },
+  clear_image: function clear_image(L, x, y, p) {
+    p = p.trim().split("\n");
+    ui.clear(L, null, x, y, p[0].length, p.length);
   },
   clear_all: function clear_all() {
     layers.map(function (L) {
@@ -237,8 +248,8 @@ var stage = {
     ui.text("ui", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", test.color);
     ui.text("ui", 13, 55, "[ FUN:TPGOD ]", "=").reg_name("fun:tpgod", function () {
       ui.clear("ui");
-      tpgod.appear(10, 10).move(0, 0, 0, 0);
-      setTimeout(function () {
+      tpgod.place(10, 10).move(0, 0, 0, 0);
+      route.timeout(function () {
         return tpgod.move(eval("t => " + prompt("dx = t => ...")), eval("t => " + prompt("dy = t => ...")), +prompt("ms"), +prompt("t"));
       }, 1000);
     }, true);
@@ -286,12 +297,12 @@ var stage = {
     stage.title();
     stage.railway();
     stage.light("*");
-    tpgod.appear(0, 60).move(1, 0, 200, 20);
+    tpgod.place(0, 60).move(1, 0, 200, 20);
   }
 };
 var tpgod = {
   move_state: 1,
-  appear: function appear(x, y) {
+  place: function place(x, y) {
     // Param: `x`, `y`.
     tpgod.x = x;
     tpgod.y = y;
@@ -305,7 +316,7 @@ var tpgod = {
         fy = typeof dy === "function" ? dy(t) : dy;
     ui.draw("move", tpgod.x, tpgod.y, image.cat("tpgod_head", "tpgod_body", "tpgod_tentacle_" + tpgod.move_state));
     if (t) route.timeout(function () {
-      ui.clear("move", " ", x - fx, y - fy, 16, 22);
+      ui.clear("move", " ", x - fx, y - fy, 17, 22);
       tpgod.move_state = 3 - tpgod.move_state;
       tpgod.x += fx;
       tpgod.y += fy;
@@ -320,13 +331,24 @@ var player = /*#__PURE__*/function () {
     _classCallCheck(this, player);
 
     this.look = _objectSpread({}, look);
+    this.bind_state = 0;
   }
 
   _createClass(player, [{
     key: "place",
     value: function place(r, i) {
       // Param: `r`ailway, `i`ndex.
-      ui.draw("move", 15 * i, r ? 85 : 25, image.cat_ex("player_head_citizen_overlook", "player_body_overlook")({
+      this.r = r;
+      this.i = i;
+      this.y = r ? 85 : 25;
+      this.x = 15 * i;
+      return this;
+    }
+  }, {
+    key: "appear",
+    value: function appear() {
+      if ([this.x, this.y].includes()) return;
+      ui.draw("move", this.x, this.y, image.cat_ex("player_head_citizen_overlook", "player_body_overlook")({
         _: 10,
         S: this.look.skin,
         E: this.look.eyes,
@@ -334,6 +356,27 @@ var player = /*#__PURE__*/function () {
       }, {
         C: this.look.cloth
       }));
+      return this;
+    }
+  }, {
+    key: "disappear",
+    value: function disappear() {
+      ui.clear("move", null, this.x - 1, this.y, 20, 12);
+      return this;
+    }
+  }, {
+    key: "bind",
+    value: function bind() {
+      var _this = this;
+
+      route.interval(function () {
+        _this.disappear().appear();
+
+        _this.bind_state++;
+        if (_this.bind_state === 5) _this.bind_state = 1;
+        ui.draw("move", _this.x - 1, _this.y + 5, image["ground_tentacle_" + _this.bind_state]);
+      }, 900);
+      return this;
     }
   }]);
 
@@ -357,12 +400,14 @@ if (location.protocol === "file:") window.debug = {
 window.onload = stage.init;
 
 window.onkeyup = function (e) {
+  var _route$now2;
+
   var d;
 
   switch (e.key) {
     case "Enter":
     case " ":
-      route.now.f();
+      (_route$now2 = route.now) === null || _route$now2 === void 0 ? void 0 : _route$now2.f();
       return;
 
     case "j":
@@ -405,6 +450,21 @@ window.onkeyup = function (e) {
   if (f === -1) f = l - 1;
   if (f === l) f = 0;
   route.top.focus = f;
+};
+
+ui.ctx.ui.canvas.onclick = function (e) {
+  var x = e.offsetX,
+      y = e.offsetY;
+  x /= 5;
+  y /= 5;
+  route.top.forEach(function (b, i) {
+    var dx = x - b.x,
+        dy = y - b.y;
+
+    if (dx >= 0 && dx <= b.m && dy >= 0 && dy <= b.n) {
+      if (route.top.focus === i) b.f();else route.top.focus = i;
+    }
+  });
 };
 },{"./resource":2}],2:[function(require,module,exports){
 const psize	= 5
@@ -941,8 +1001,8 @@ const font = {
 `,
 
 "~": `
- #  #
-# ## 
+ # #
+# # 
      
      
      
@@ -1075,6 +1135,8 @@ tpgod_tentacle_2: `
 
 ground_tentacle_1: `
 ----------------------
+----------------------
+----------------------
 ------------/--/------
 ------/-----------/---
 ---/---------------/--
@@ -1084,26 +1146,40 @@ ground_tentacle_1: `
 `,
 
 ground_tentacle_2: `
-------------#--#------
-------#-----/--/--#---
----#--/-----------/#--
---#/--------------#/--
---/-#---------#---/---
-----/---#-----/-------
+----------------------
+----------------------
+------------/--/------
+------/-----/--/--/---
+---/--/-----------//--
+--//--------------//--
+--/-/---------/---/---
+----/---/-----/-------
 --------/-------------
 `,
 
 ground_tentacle_3: `
-------------#--#------
-------##----/##/-##---
----#--/-#--##---#-/#--
---#/-#-----#-#--###/--
---/-#----##---#---/---
-----/---#-----/-------
+---------------!------
+------!-----#--#------
+------#-----/--/--#!--
+--!#--/-----/--/--/#--
+--#/--/-------!---#/--
+--//#---!-----#---//--
+--/-/---#-----/---/---
+----/---/-----/-------
 --------/-------------
 `,
 
-
+ground_tentacle_4: `
+---------------!------
+------!-----#--#------
+------#----#/--/-##!--
+--!##-/#--#-/-###-/#--
+--#/--#-##-##-!--##/--
+--//##--!-#--##---//--
+--/-/---##----/---/---
+----/---/-----/-------
+--------/-------------
+`,
 
 player_head_citizen: `
 ----########----
@@ -1164,6 +1240,34 @@ player_body_overlook: `
 --#--#----------
 -#--#-----------
 #--#------------
+`,
+
+arrow_down: `
+---####---
+---#%%#---
+---#%%#---
+---#%%#---
+---#%%#---
+---#%%#---
+####%%####
+-#%%%%%%#-
+--#%%%%#--
+---#%%#---
+----##----
+`,
+
+arrow_up: `
+----##----
+---#%%#---
+--#%%%%#--
+-#%%%%%%#-
+####%%####
+---#%%#---
+---#%%#---
+---#%%#---
+---#%%#---
+---#%%#---
+---####---
 `,
 
 random: (n, m) =>

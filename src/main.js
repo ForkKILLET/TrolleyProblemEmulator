@@ -53,17 +53,20 @@ const route = {
 	prompt() {
 		if (route.top.focus === null) return
 		const { x, y } = route.now
-		ui.text("ui", x, y, ">>", "+")
+		ui.text("ui", x - 12, y, ">>", "+")
 	},
 	clear_prompt(b) {											// Param: `b`utton.
 		if (route.top.focus === null) return
 		let { x, y } = b ?? route.now
-		ui.clear("ui", null, x, y, 11, 5)
+		ui.clear("ui", null, x - 12, y, 11, 5)
 	},
 
 	_timeout: [],
 	timeout(f, ms) {											// Param: `f`unction, `m`illi`s`econd.
 		route._timeout.push(setTimeout(f, ms))
+	},
+	interval(f, ms) {											// Param: `f`unction, `m`illi`s`econd.
+		route._timeout.push(setInterval(f, ms))
 	},
 	clear_timeout() {
 		route._timeout.forEach(id => clearTimeout(id))
@@ -108,12 +111,14 @@ const ui = {
 			ui.draw(L, x + c * gx, y + r * gy, f)
 		}
 		return {
-			reg: f => route.add({ f, x: x - 12, y }),			// Param: `f`unction.
+			reg: f => route.add({								// Param: `f`unction.
+				x, y, m: t[0].length * 6, n: t.length * 6, f
+			}),
 			reg_name: (n, f, p) => {							// Param: `n`ame, `f`unction, `p`ush.
-				if (route.find(n) === -1)
-					route.add({ n, x: x - 12, y, f:
-						p ? () => { f(); route.push(n, p) } : f
-					})
+				if (route.find(n) === -1) route.add({
+					x, y, m: t[0].length * 6, n: t.length * 6,
+					f: p ? () => { f(); route.push(n, p) } : f
+				})
 			}
 		}
 	},
@@ -122,6 +127,10 @@ const ui = {
 		ui.ctx[L][ c ? "fillRect" : "clearRect" ](
 			x * psize, y * psize, m * psize, n * psize
 		)
+	},
+	clear_image(L, x, y, p) {
+		p = p.trim().split("\n")
+		ui.clear(L, null, x, y, p[0].length, p.length)
 	},
 	clear_all() {
 		layers.map(L => ui.clear(L))
@@ -161,8 +170,8 @@ const stage = {
 		ui.text("ui", 13, 49, "[ TEST:COLOR ]", "+").reg_name("test:color", test.color)
 		ui.text("ui", 13, 55, "[ FUN:TPGOD ]", "=").reg_name("fun:tpgod", () => {
 			ui.clear("ui")
-			tpgod.appear(10, 10).move(0, 0, 0, 0)
-			setTimeout(() => tpgod.move(
+			tpgod.place(10, 10).move(0, 0, 0, 0)
+			route.timeout(() => tpgod.move(
 				eval("t => " + prompt("dx = t => ...")),
 				eval("t => " + prompt("dy = t => ...")),
 				+ prompt("ms"), + prompt("t")
@@ -208,13 +217,13 @@ const stage = {
 		stage.railway()
 		stage.light("*")
 
-		tpgod.appear(0, 60).move(1, 0, 200, 20)
+		tpgod.place(0, 60).move(1, 0, 200, 20)
 	}
 }
 
 const tpgod = {
 	move_state: 1,
-	appear(x, y) {												// Param: `x`, `y`.
+	place(x, y) {												// Param: `x`, `y`.
 		tpgod.x = x; tpgod.y = y
 		return tpgod
 	},
@@ -227,7 +236,7 @@ const tpgod = {
 			"tpgod_head", "tpgod_body", "tpgod_tentacle_" + tpgod.move_state
 		))
 		if (t) route.timeout(() => {
-			ui.clear("move", " ", x - fx, y - fy, 16, 22)
+			ui.clear("move", " ", x - fx, y - fy, 17, 22)
 			tpgod.move_state = 3 - tpgod.move_state
 			tpgod.x += fx; tpgod.y += fy
 			tpgod.move(dx, dy, ms, t - 1)
@@ -239,14 +248,35 @@ const tpgod = {
 class player {
 	constructor(look) {
 		this.look = { ...look }
+		this.bind_state = 0
 	}
 	place(r, i) {												// Param: `r`ailway, `i`ndex.
-		ui.draw("move", 15 * i, r ? 85 : 25, image.cat_ex(
+		this.r = r; this.i = i
+		this.y = r ? 85 : 25; this.x = 15 * i
+		return this
+	}
+	appear() {
+		if ([ this.x, this.y ].includes()) return
+		ui.draw("move", this.x, this.y, image.cat_ex(
 			"player_head_citizen_overlook", "player_body_overlook"
 		)(
 			{ _: 10, S: this.look.skin, E: this.look.eyes, M: this.look.mouth },
 			{ C: this.look.cloth })
 		)
+		return this
+	}
+	disappear() {
+		ui.clear("move", null, this.x - 1, this.y, 20, 12)
+		return this
+	}
+	bind() {
+		route.interval(() => {
+			this.disappear().appear()
+			this.bind_state ++
+			if (this.bind_state === 5) this.bind_state = 1
+			ui.draw("move", this.x - 1, this.y + 5, image[ "ground_tentacle_" + this.bind_state ])
+		}, 900)
+		return this
 	}
 }
 
@@ -264,7 +294,7 @@ window.onkeyup = e => {
 	let d; switch (e.key) {
 	case "Enter":
 	case " ":
-		route.now.f()
+		route.now?.f()
 		return
 	case "j":
 	case "ArrowDown":
@@ -300,5 +330,19 @@ window.onkeyup = e => {
 	if (f === -1) f = l - 1
 	if (f === l) f = 0
 	route.top.focus = f
+}
+
+ui.ctx.ui.canvas.onclick = e => {
+	let { offsetX: x, offsetY: y } = e
+	x /= 5; y /= 5
+
+
+	route.top.forEach((b, i) => {
+		const dx = x - b.x, dy = y - b.y
+		if (dx >= 0 && dx <= b.m && dy >= 0 && dy <= b.n) {
+			if (route.top.focus === i) b.f()
+			else route.top.focus = i
+		}
+	})
 }
 
