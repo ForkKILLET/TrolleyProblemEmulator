@@ -26,12 +26,18 @@ function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToAr
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
 var _require = require("./resource"),
-    psize = _require.psize,
     _color = _require.color,
     _font = _require.font,
     image = _require.image;
 
-var csize = 750 / psize;
+var query = new Proxy(new URLSearchParams(location.search), {
+  get: function get(p, k) {
+    return p.get(k);
+  }
+});
+_font.family = query.ff || "icelava";
+_font.size = +query.fs || 5;
+var csize = 750 / _font.size;
 var layers = ["stage", "move", "ui"];
 var route = {
   _stack: [],
@@ -136,10 +142,18 @@ var _help = {
   init: "\nJ / DOWN      FOCUS NEXT\nK / UP        FOCUS PREV\nH / LEFT /    BACK\nDEL / BKSP\n?             FOCUS ?\nSP / ENTER    ACTIVE\nR             REFRESH\n~C            CLEAR ALL\n"
 };
 var ui = {
-  ctx: layers.reduce(function (acc, L) {
-    acc[L] = document.getElementById(L).getContext("2d");
-    return acc;
+  ctx: layers.reduce(function (a, L) {
+    return a[L] = document.getElementById(L).getContext("2d"), a;
   }, {}),
+  raw: function raw(L, c, x, y, m, n) {
+    var _ui$ctx$L;
+
+    if (c) ui.ctx[L].fillStyle = _color[c];
+
+    (_ui$ctx$L = ui.ctx[L])[c ? "fillRect" : "clearRect"].apply(_ui$ctx$L, _toConsumableArray([x, y, m, n].map(function (i) {
+      return i * _font.size;
+    })));
+  },
   draw: function draw(L, x, y, p) {
     // Param: `L`ayer, `x`, `y`, `p`ixels.
     if (typeof p === "string") p = p.split("\n");
@@ -149,8 +163,7 @@ var ui = {
 
     for (var r = 0; r < p.length; r++) {
       for (var c = 0; c < p[r].length; c++) {
-        ui.ctx[L].fillStyle = _color[p[r][c]];
-        ui.ctx[L].fillRect((x + c) * psize, (y + r) * psize, psize, psize);
+        ui.raw(L, p[r][c], x + c, y + r, 1, 1);
       }
     }
   },
@@ -164,7 +177,7 @@ var ui = {
 
     for (var r = 0; r < t.length; r++) {
       for (var c = 0; c < t[r].length; c++) {
-        var f = _font[t[r][c]];
+        var f = _font[_font.family][t[r][c]];
         if (fc || bc) f = f.replaceAll("#", "{").replaceAll(" ", "}").replaceAll("{", fc).replaceAll("}", bc);
         ui.draw(L, x + c * gx, y + r * gy, f);
       }
@@ -203,7 +216,7 @@ var ui = {
     var n = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : csize;
     // Param: `L`ayer, `c`olor, `x`, `y`, `m`, `n`.
     if (c) ui.ctx[L].fillStyle = _color[c];
-    ui.ctx[L][c ? "fillRect" : "clearRect"](x * psize, y * psize, m * psize, n * psize);
+    ui.raw(L, c, x, y, m, n);
   },
   clear_image: function clear_image(L, x, y, p) {
     p = p.trim().split("\n");
@@ -218,7 +231,7 @@ var ui = {
 var test = {
   font: function font() {
     ui.clear("ui", null, 0, 80);
-    ui.text("ui", 1, 80, Object.keys(_font).join("").replace(/[^]{17}/g, "$&\n"));
+    ui.text("ui", 1, 80, Object.keys(_font[_font.family]).join("").replace(/[^]{17}/g, "$&\n"));
   },
   color: function color() {
     ui.clear("ui", null, 0, 80);
@@ -392,7 +405,6 @@ if (location.protocol === "file:") window.debug = {
   player: player,
   csize: csize,
   layers: layers,
-  psize: psize,
   color: _color,
   font: _font,
   image: image
@@ -467,8 +479,6 @@ ui.ctx.ui.canvas.onclick = function (e) {
   });
 };
 },{"./resource":2}],2:[function(require,module,exports){
-const psize	= 5
-
 const color = {
 
 "#": "black",
@@ -487,6 +497,8 @@ const color = {
 }
 
 const font = {
+
+icelava: {
 
 "A": `
  ### 
@@ -1032,6 +1044,556 @@ const font = {
   #  
 `
 
+},
+
+piterator: {
+
+"A": `
+  #  
+ # # 
+#   #
+#####
+#   #
+`,
+
+"B": `
+#### 
+#   #
+#### 
+#   #
+#### 
+`,
+
+"C": `
+ ####
+#    
+#    
+#    
+ ####
+`,
+
+"D": `
+#### 
+#   #
+#   #
+#   #
+#### 
+`,
+
+"E": `
+#####
+#    
+#### 
+#    
+#####
+`,
+
+"F": `
+#####
+#    
+#### 
+#    
+#    
+`,
+
+"G": `
+ ### 
+#    
+# ###
+#   #
+ ### 
+`,
+
+"H": `
+#   #
+#   #
+#####
+#   #
+#   #
+`,
+
+"I": `
+ ### 
+  #  
+  #  
+  #  
+ ### 
+`,
+
+"J": `
+ ### 
+   # 
+   # 
+ # # 
+  #  
+`,
+
+"K": `
+#   #
+# ## 
+##   
+# ## 
+#   #
+`,
+
+"L": `
+#    
+#    
+#    
+#    
+#####
+`,
+
+"M": `
+#   #
+## ##
+# # #
+#   #
+#   #
+`,
+
+"N": `
+#   #
+##  #
+# # #
+#  ##
+#   #
+`,
+
+"O": `
+ ### 
+#   #
+#   #
+#   #
+ ### 
+`,
+
+"P": `
+#### 
+#   #
+#### 
+#    
+#    
+`,
+
+"Q": `
+ ### 
+#   #
+# # #
+#  # 
+ ## #
+`,
+
+"R": `
+#### 
+#   #
+#### 
+# #  
+#  ##
+`,
+
+"S": `
+ ####
+#    
+ ### 
+    #
+#### 
+`,
+
+"T": `
+#####
+  #  
+  #  
+  #  
+  #  
+`,
+
+"U": `
+#   #
+#   #
+#   #
+#   #
+ ### 
+`,
+
+"V": `
+#   #
+#   #
+#   #
+ # # 
+  #  
+`,
+
+"W": `
+#   #
+# # #
+# # #
+# # #
+ # # 
+`,
+
+"X": `
+#   #
+ # # 
+  #  
+ # # 
+#   #
+`,
+
+"Y": `
+#   #
+ # # 
+  #  
+  #  
+  #  
+`,
+
+"Z": `
+#####
+   # 
+  # 
+ #   
+#####
+`,
+
+"0": `
+ ### 
+#  ##
+# # #
+##  #
+ ### 
+`,
+
+"1": `
+  #  
+ ##  
+  #  
+  #  
+ ### 
+`,
+
+"2": `
+ ### 
+#   #
+  ## 
+ #   
+#####
+`,
+
+"3": `
+#### 
+    #
+#### 
+    #
+#### 
+`,
+
+"4": `
+   # 
+  ## 
+ # # 
+#####
+   # 
+`,
+
+"5": `
+#####
+#    
+#### 
+    #
+#### 
+`,
+
+"6": `
+ ### 
+#    
+#### 
+#   #
+ ### 
+`,
+
+"7": `
+#####
+   # 
+  #  
+  #  
+  #  
+`,
+
+"8": `
+ ### 
+#   #
+ ### 
+#   #
+ ### 
+`,
+
+"9": `
+ ### 
+#   #
+ ####
+    #
+ ### 
+`,
+
+" ": `
+     
+     
+     
+     
+     
+`,
+
+".": `
+     
+     
+     
+     
+ #   
+`,
+
+",": `
+     
+     
+     
+ #   
+#    
+`,
+
+"!": `
+  #  
+  #  
+  #  
+     
+  #  
+`,
+
+"?": `
+ ####
+#   #
+  ## 
+     
+  #  
+`,
+
+"#": `
+ # # 
+#####
+ # # 
+#####
+ # # 
+`,
+
+"/": `
+    #
+   # 
+  #  
+ #   
+#    
+`,
+
+"\\": `
+#     
+ #   
+  #  
+   # 
+    #
+`,
+
+"|": `
+  #  
+  #  
+  #  
+  #  
+  #  
+`,
+
+"+": `
+     
+  #  
+ ### 
+  #  
+     
+`,
+
+"-": `
+     
+     
+ ### 
+     
+     
+`,
+
+"_": `
+     
+     
+     
+     
+#####
+`,
+
+"=": `
+     
+ ### 
+     
+ ### 
+     
+`,
+
+"*": `
+     
+ # # 
+  #  
+ # # 
+     
+`,
+
+":": `
+     
+  #  
+     
+  #  
+     
+`,
+
+";": `
+     
+  #  
+     
+  #  
+ #   
+`,
+
+"@": `
+ ### 
+#   #
+# ## 
+#    
+ ####
+`,
+
+"%": `
+##  #
+#  # 
+  #  
+ #  #
+#  ##
+`,
+
+"$": `
+ ####
+# #  
+ ### 
+  # #
+#### 
+`,
+
+"(": `
+   # 
+  #  
+  #  
+  #  
+   # 
+`,
+
+")": `
+ #   
+  #  
+  #  
+  #  
+ #   
+`,
+
+"[": `
+  ## 
+  #  
+  #  
+  #  
+  ## 
+`,
+
+"]": `
+ ##  
+  #  
+  #  
+  #  
+ ##  
+`,
+
+"<": `
+   # 
+  #  
+ #   
+  #  
+   # 
+`,
+
+">": `
+ #   
+  #  
+   # 
+  #  
+ #   
+`,
+
+"'": `
+  #  
+  #  
+     
+     
+     
+`,
+
+"\"": `
+ # # 
+ # # 
+     
+     
+     
+`,
+
+"`": `
+ #   
+  #  
+     
+     
+     
+`,
+
+"~": `
+ # #
+# # 
+     
+     
+     
+`,
+
+"^": `
+  #  
+ # # 
+     
+     
+     
+`,
+
+"&": `
+ ##  
+#  # 
+ ## #
+#  # 
+ ## #
+`,
+
+"Ψ": `
+# # #
+# # #
+ ### 
+  #  
+  #  
+`
+
+}
+
 }
 
 const image = {
@@ -1288,8 +1850,7 @@ cat_ex: (...ps) => (...ex) => ps.map((p, i) => {
 }
 
 module.exports = {
-	psize, color, font, image
+	color, font, image
 }
-
 
 },{}]},{},[1])

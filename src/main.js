@@ -1,8 +1,16 @@
 const {
-	psize, color, font, image
+	color, font, image
 }			= require("./resource")
 
-const csize = 750 / psize
+const query = new Proxy(new URLSearchParams(location.search), {
+	get: (p, k) => p.get(k)
+})
+
+font.family = query.ff || "icelava"
+font.size = + query.fs || 5
+
+const csize = 750 / font.size
+
 const layers = [ "stage", "move", "ui" ]
 
 const route = {
@@ -87,24 +95,25 @@ R             REFRESH
 }
 
 const ui = {
-	ctx: layers.reduce((acc, L) => {
-		acc[L] = document.getElementById(L).getContext("2d")
-		return acc
-	}, {}),
+	ctx: layers.reduce((a, L) => ((
+		a[L] = document.getElementById(L).getContext("2d")
+	), a), {}),
+	raw(L, c, x, y, m, n) {
+		if (c) ui.ctx[L].fillStyle = color[c]
+		ui.ctx[L][ c ? "fillRect" : "clearRect" ](...[ x, y, m, n ].map(i => i * font.size))
+	},
 	draw(L, x, y, p) {											// Param: `L`ayer, `x`, `y`, `p`ixels.
 		if (typeof p === "string") p = p.split("\n")
 		p = p.filter((s, k) => (k !== 0 && k !== p.length - 1) || s !== "")
 		for (let r = 0; r < p.length; r++)
-		for (let c = 0; c < p[r].length; c++) {
-			ui.ctx[L].fillStyle = color[p[r][c]]
-			ui.ctx[L].fillRect((x + c) * psize, (y + r) * psize, psize, psize)
-		}
+		for (let c = 0; c < p[r].length; c++)
+			ui.raw(L, p[r][c], x + c, y + r, 1, 1)
 	},
 	text(L, x, y, t, fc = "#", bc = "-", gx = 6, gy = 6) {		// Param: `L`ayer, `x`, `y`, `f`ore`g`round color, `b`ack`g`round color, `g`ap `x`, `g`ap `y`
 		if (typeof t === "string") t = t.split("\n")
 		for (let r = 0; r < t.length; r++)
 		for (let c = 0; c < t[r].length; c++) {
-			let f = font[t[r][c]]
+			let f = font[font.family][t[r][c]]
 			if (fc || bc) f = f
 				.replaceAll("#", "{").replaceAll(" ", "}")
 				.replaceAll("{", fc).replaceAll("}", bc)
@@ -124,9 +133,7 @@ const ui = {
 	},
 	clear(L, c, x = 0, y = 0, m = csize, n = csize) {			// Param: `L`ayer, `c`olor, `x`, `y`, `m`, `n`.
 		if (c) ui.ctx[L].fillStyle = color[c]
-		ui.ctx[L][ c ? "fillRect" : "clearRect" ](
-			x * psize, y * psize, m * psize, n * psize
-		)
+		ui.raw(L, c, x, y, m, n)
 	},
 	clear_image(L, x, y, p) {
 		p = p.trim().split("\n")
@@ -141,7 +148,7 @@ const test = {
 	font() {
 		ui.clear("ui", null, 0, 80)
 		ui.text("ui", 1, 80,
-			Object.keys(font).join("").replace(/[^]{17}/g, "$&\n")
+			Object.keys(font[font.family]).join("").replace(/[^]{17}/g, "$&\n")
 		)
 	},
 	color() {
@@ -285,7 +292,7 @@ if (location.protocol === "file:") window.debug = {
 	ui, test, stage,
 	tpgod, player,
 	csize, layers,
-	psize, color, font, image
+	color, font, image
 }
 
 window.onload = stage.init
@@ -335,7 +342,6 @@ window.onkeyup = e => {
 ui.ctx.ui.canvas.onclick = e => {
 	let { offsetX: x, offsetY: y } = e
 	x /= 5; y /= 5
-
 
 	route.top.forEach((b, i) => {
 		const dx = x - b.x, dy = y - b.y
