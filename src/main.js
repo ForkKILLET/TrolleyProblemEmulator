@@ -341,7 +341,7 @@ window.onkeyup = e => {
 
 ui.ctx.ui.canvas.onclick = e => {
 	let { offsetX: x, offsetY: y } = e
-	x /= 5; y /= 5
+	x /= font.size; y /= font.size
 
 	route.top.forEach((b, i) => {
 		const dx = x - b.x, dy = y - b.y

@@ -467,8 +467,8 @@ window.onkeyup = function (e) {
 ui.ctx.ui.canvas.onclick = function (e) {
   var x = e.offsetX,
       y = e.offsetY;
-  x /= 5;
-  y /= 5;
+  x /= _font.size;
+  y /= _font.size;
   route.top.forEach(function (b, i) {
     var dx = x - b.x,
         dy = y - b.y;
