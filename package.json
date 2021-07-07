@@ -6,7 +6,7 @@
   "author": "ForkKILLET",
   "license": "MIT",
   "devDependencies": {
-    "@babel/core": "^7.12.1z6",
+    "@babel/core": "^7.14.6",
     "@babel/preset-env": "^7.12.16",
     "eslint": "^7.20.0",
     "gulp": "^4.0.2",
