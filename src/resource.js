@@ -12,8 +12,12 @@ export const color = {
 " ": "white",
 "=": "sienna",
 "-": "transparent",
+"x": null
 
 }
+
+const cs = Object.keys(color)
+export const random_color = () => cs[ ~~ (Math.random() * 1e6) % (cs.length - 2) ]
 
 export const font = {
 
@@ -1352,7 +1356,7 @@ arrow_up: `
 `,
 
 random: (n, m) =>
-	image[ n + "_" + (~~ (Math.random() * 100) % m + 1) ],
+	image[ n + "_" + (~~ (Math.random() * 1e6) % m + 1) ],
 
 cat: (...ps) => (Array.isArray(ps[0]) ? ps[0] : ps)
 	.map(p => (image[p] ?? p).trim()).join("\n"),

@@ -1,8 +1,8 @@
 {
-  "name": "TrainProblemEmulator",
-  "version": "1.0.0",
-  "description": "An evil game which emulates train problem.",
-  "main": "main.js",
+  "name": "trolley-problem-emulator-workspace",
+  "version": "0.5.2",
+  "description": "An evil game which emulates trolley problem.",
+  "main": "src/index.js",
   "author": "ForkKILLET",
   "license": "MIT",
   "devDependencies": {
