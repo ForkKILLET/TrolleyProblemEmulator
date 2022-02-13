@@ -34,6 +34,8 @@ const route = {
 		route._stack.push(frame)
 	},
 	pop: () => {
+		if (route._stack.length === 1) return
+
 		route.clear_prompt()
 		route.clear_timeout()
 		const f = route.top.back
@@ -159,14 +161,14 @@ const test = {
 
 const stage = {
 	title() {
-		ui.text("ui", 1, 1, "TRAIN PROBLEM", "#")
-		ui.text("ui", 1, 7, "<<<< EMULATOR", "!")
+		ui.text("ui", 1, 1, "TROLLEY PROBLEM", "!")
+		ui.text("ui", 1, 7, "<<<<   EMULATOR", "#")
 	},
 	author() {
 		ui.text("ui", 1, 19, "@", "@")
 		ui.text("ui", 7, 19, "FORKΨKILLET", "#")
-		ui.text("ui", 13, 25, "GITHUB:FORKFG/TPE", "@").reg_name("github", () =>
-			open("https://github.com/ForkFG/TrainProblemEmulator")
+		ui.text("ui", 13, 25, "GITHUB:FK/TPE", "@").reg_name("github", () =>
+			open("https://github.com/ForkKILLET/TrolleyProblemEmulator")
 		)
 	},
 	menu() {
@@ -285,7 +287,7 @@ class player {
 	}
 }
 
-if (location.protocol === "file:") window.debug = {
+if (query.debug) window.debug = {
 	route,
 	ui, test, stage,
 	tpgod, player,
