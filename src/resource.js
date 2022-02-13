@@ -1,4 +1,4 @@
-const color = {
+export const color = {
 
 "#": "black",
 "!": "red",
@@ -15,7 +15,7 @@ const color = {
 
 }
 
-const font = {
+export const font = {
 
 icelava: {
 
@@ -1115,7 +1115,7 @@ piterator: {
 
 }
 
-const image = {
+export const image = {
 
 railway_top: `
 =   ==
@@ -1366,8 +1366,4 @@ cat_ex: (...ps) => (...ex) => ps.map((p, i) => {
 	return s
 }).join("\n"),
 
-}
-
-module.exports = {
-	color, font, image
 }

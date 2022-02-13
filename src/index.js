@@ -1,6 +1,4 @@
-const {
-	color, font, image
-}			= require("./resource")
+import { color, font, image } from "./resource.js"
 
 const query = new Proxy(new URLSearchParams(location.search), {
 	get: (p, k) => p.get(k)
