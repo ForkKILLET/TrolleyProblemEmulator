@@ -44,7 +44,7 @@ const route = {
 		route.prompt()
 	},
 
-	find: n => route.top.findIndex(b => b.n === n),				// Param: `n`ame.
+	find: N => route.top.findIndex(b => b.N === N),				// Param: `n`ame.
 	add: o => { route.top.push(o) },							// Param: `o`bject.
 	rmv: n => {													// Param: `n`ame.
 		const i = route.top.find(n), f = route.top.focus
@@ -123,10 +123,10 @@ const ui = {
 			reg: f => route.add({								// Param: `f`unction.
 				x, y, m: t[0].length * 6, n: t.length * 6, f
 			}),
-			reg_name: (n, f, p) => {							// Param: `n`ame, `f`unction, `p`ush.
-				if (route.find(n) === -1) route.add({
-					x, y, m: t[0].length * 6, n: t.length * 6,
-					f: p ? () => { f(); route.push(n, p) } : f
+			reg_name: (N, f, p) => {							// Param: `n`ame, `f`unction, `p`ush.
+				if (route.find(N) === -1) route.add({
+					N, x, y, m: t[0].length * 6, n: t.length * 6,
+					f: p ? () => { f(); route.push(N, p) } : f
 				})
 			}
 		}
@@ -312,7 +312,8 @@ window.onkeyup = e => {
 		d = -1
 		break
 	case "?":
-		route.top.focus = route.find("help")
+		if (route._stack.length === 1)
+			route.top.focus = route.find("help")
 		return
 	case "r":
 		location.reload()
